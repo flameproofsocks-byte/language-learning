@@ -1,0 +1,248 @@
+// Spanish word list (A1–B1) and the shared Word interface used by all languages.
+// Mandarin words are in lib/mandarin.ts; Indonesian in lib/indonesian.ts.
+// Use wordsFor(lang) from lib/language-data.ts to get the right list for the active language.
+
+export type PartOfSpeech = 'verb' | 'noun' | 'adjective' | 'adverb' | 'pronoun' | 'preposition' | 'conjunction' | 'number' | 'article'
+
+export interface Word {
+  id: string
+  word: string           // primary display form (Spanish word or Mandarin pinyin)
+  characters?: string    // Chinese characters (Mandarin only)
+  english: string        // primary translation shown to user
+  aliases: string[]      // accepted alternatives for verification
+  pos: PartOfSpeech
+  rank: number           // frequency rank (lower = more common)
+}
+
+// Top 100 Spanish words by frequency, CEFR A1–A2
+export const SPANISH_WORDS: Word[] = [
+  { id: 'w001', word: 'ser',       english: 'to be',         aliases: ['be'],                     pos: 'verb',         rank: 1  },
+  { id: 'w002', word: 'tener',     english: 'to have',       aliases: ['have'],                   pos: 'verb',         rank: 2  },
+  { id: 'w003', word: 'hacer',     english: 'to do',         aliases: ['do', 'make', 'to make'],  pos: 'verb',         rank: 3  },
+  { id: 'w004', word: 'poder',     english: 'to be able to', aliases: ['can', 'be able'],         pos: 'verb',         rank: 4  },
+  { id: 'w005', word: 'decir',     english: 'to say',        aliases: ['say', 'tell', 'to tell'], pos: 'verb',         rank: 5  },
+  { id: 'w006', word: 'ir',        english: 'to go',         aliases: ['go'],                     pos: 'verb',         rank: 6  },
+  { id: 'w007', word: 'ver',       english: 'to see',        aliases: ['see'],                    pos: 'verb',         rank: 7  },
+  { id: 'w008', word: 'dar',       english: 'to give',       aliases: ['give'],                   pos: 'verb',         rank: 8  },
+  { id: 'w009', word: 'saber',     english: 'to know',       aliases: ['know'],                   pos: 'verb',         rank: 9  },
+  { id: 'w010', word: 'querer',    english: 'to want',       aliases: ['want', 'love', 'to love'],pos: 'verb',         rank: 10 },
+  { id: 'w011', word: 'llegar',    english: 'to arrive',     aliases: ['arrive', 'get there'],    pos: 'verb',         rank: 11 },
+  { id: 'w012', word: 'pasar',     english: 'to happen',     aliases: ['happen', 'pass', 'to pass'],pos: 'verb',       rank: 12 },
+  { id: 'w013', word: 'deber',     english: 'must',          aliases: ['to must', 'should', 'to owe', 'owe'], pos: 'verb', rank: 13 },
+  { id: 'w014', word: 'poner',     english: 'to put',        aliases: ['put', 'place', 'to place'],pos: 'verb',        rank: 14 },
+  { id: 'w015', word: 'parecer',   english: 'to seem',       aliases: ['seem', 'appear', 'to appear'], pos: 'verb',    rank: 15 },
+  { id: 'w016', word: 'quedar',    english: 'to stay',       aliases: ['stay', 'remain', 'to remain'], pos: 'verb',    rank: 16 },
+  { id: 'w017', word: 'creer',     english: 'to believe',    aliases: ['believe', 'think', 'to think'], pos: 'verb',   rank: 17 },
+  { id: 'w018', word: 'hablar',    english: 'to speak',      aliases: ['speak', 'talk', 'to talk'], pos: 'verb',       rank: 18 },
+  { id: 'w019', word: 'llevar',    english: 'to carry',      aliases: ['carry', 'wear', 'to wear'], pos: 'verb',       rank: 19 },
+  { id: 'w020', word: 'dejar',     english: 'to leave',      aliases: ['leave', 'let', 'to let'],  pos: 'verb',        rank: 20 },
+  { id: 'w021', word: 'seguir',    english: 'to follow',     aliases: ['follow', 'continue', 'to continue'], pos: 'verb', rank: 21 },
+  { id: 'w022', word: 'encontrar', english: 'to find',       aliases: ['find', 'meet', 'to meet'], pos: 'verb',        rank: 22 },
+  { id: 'w023', word: 'trabajar',  english: 'to work',       aliases: ['work'],                   pos: 'verb',         rank: 23 },
+  { id: 'w024', word: 'vivir',     english: 'to live',       aliases: ['live'],                   pos: 'verb',         rank: 24 },
+  { id: 'w025', word: 'comer',     english: 'to eat',        aliases: ['eat'],                    pos: 'verb',         rank: 25 },
+  { id: 'w026', word: 'beber',     english: 'to drink',      aliases: ['drink'],                  pos: 'verb',         rank: 26 },
+  { id: 'w027', word: 'comprar',   english: 'to buy',        aliases: ['buy'],                    pos: 'verb',         rank: 27 },
+  { id: 'w028', word: 'leer',      english: 'to read',       aliases: ['read'],                   pos: 'verb',         rank: 28 },
+  { id: 'w029', word: 'escribir',  english: 'to write',      aliases: ['write'],                  pos: 'verb',         rank: 29 },
+  { id: 'w030', word: 'abrir',     english: 'to open',       aliases: ['open'],                   pos: 'verb',         rank: 30 },
+  { id: 'w031', word: 'año',       english: 'year',          aliases: [],                         pos: 'noun',         rank: 31 },
+  { id: 'w032', word: 'vez',       english: 'time',          aliases: ['occasion', 'instance'],   pos: 'noun',         rank: 32 },
+  { id: 'w033', word: 'día',       english: 'day',           aliases: [],                         pos: 'noun',         rank: 33 },
+  { id: 'w034', word: 'cosa',      english: 'thing',         aliases: [],                         pos: 'noun',         rank: 34 },
+  { id: 'w035', word: 'hombre',    english: 'man',           aliases: [],                         pos: 'noun',         rank: 35 },
+  { id: 'w036', word: 'parte',     english: 'part',          aliases: [],                         pos: 'noun',         rank: 36 },
+  { id: 'w037', word: 'vida',      english: 'life',          aliases: [],                         pos: 'noun',         rank: 37 },
+  { id: 'w038', word: 'tiempo',    english: 'time',          aliases: ['weather'],                pos: 'noun',         rank: 38 },
+  { id: 'w039', word: 'mujer',     english: 'woman',         aliases: ['wife'],                   pos: 'noun',         rank: 39 },
+  { id: 'w040', word: 'casa',      english: 'house',         aliases: ['home'],                   pos: 'noun',         rank: 40 },
+  { id: 'w041', word: 'mano',      english: 'hand',          aliases: [],                         pos: 'noun',         rank: 41 },
+  { id: 'w042', word: 'ciudad',    english: 'city',          aliases: ['town'],                   pos: 'noun',         rank: 42 },
+  { id: 'w043', word: 'país',      english: 'country',       aliases: [],                         pos: 'noun',         rank: 43 },
+  { id: 'w044', word: 'agua',      english: 'water',         aliases: [],                         pos: 'noun',         rank: 44 },
+  { id: 'w045', word: 'niño',      english: 'child',         aliases: ['boy', 'kid'],             pos: 'noun',         rank: 45 },
+  { id: 'w046', word: 'amigo',     english: 'friend',        aliases: [],                         pos: 'noun',         rank: 46 },
+  { id: 'w047', word: 'trabajo',   english: 'work',          aliases: ['job'],                    pos: 'noun',         rank: 47 },
+  { id: 'w048', word: 'noche',     english: 'night',         aliases: ['evening'],                pos: 'noun',         rank: 48 },
+  { id: 'w049', word: 'mundo',     english: 'world',         aliases: [],                         pos: 'noun',         rank: 49 },
+  { id: 'w050', word: 'nombre',    english: 'name',          aliases: [],                         pos: 'noun',         rank: 50 },
+  { id: 'w051', word: 'bueno',     english: 'good',          aliases: [],                         pos: 'adjective',    rank: 51 },
+  { id: 'w052', word: 'grande',    english: 'big',           aliases: ['large', 'great'],         pos: 'adjective',    rank: 52 },
+  { id: 'w053', word: 'nuevo',     english: 'new',           aliases: [],                         pos: 'adjective',    rank: 53 },
+  { id: 'w054', word: 'mismo',     english: 'same',          aliases: ['itself', 'himself'],      pos: 'adjective',    rank: 54 },
+  { id: 'w055', word: 'otro',      english: 'other',         aliases: ['another'],                pos: 'adjective',    rank: 55 },
+  { id: 'w056', word: 'mucho',     english: 'much',          aliases: ['many', 'a lot'],          pos: 'adjective',    rank: 56 },
+  { id: 'w057', word: 'poco',      english: 'little',        aliases: ['few', 'a little'],        pos: 'adjective',    rank: 57 },
+  { id: 'w058', word: 'tanto',     english: 'so much',       aliases: ['so many', 'as much'],     pos: 'adjective',    rank: 58 },
+  { id: 'w059', word: 'alguno',    english: 'some',          aliases: ['any'],                    pos: 'adjective',    rank: 59 },
+  { id: 'w060', word: 'primero',   english: 'first',         aliases: [],                         pos: 'adjective',    rank: 60 },
+  { id: 'w061', word: 'solo',      english: 'only',          aliases: ['alone', 'just'],          pos: 'adjective',    rank: 61 },
+  { id: 'w062', word: 'último',    english: 'last',          aliases: ['final', 'latest'],        pos: 'adjective',    rank: 62 },
+  { id: 'w063', word: 'alto',      english: 'tall',          aliases: ['high'],                   pos: 'adjective',    rank: 63 },
+  { id: 'w064', word: 'pequeño',   english: 'small',         aliases: ['little'],                 pos: 'adjective',    rank: 64 },
+  { id: 'w065', word: 'viejo',     english: 'old',           aliases: [],                         pos: 'adjective',    rank: 65 },
+  { id: 'w066', word: 'joven',     english: 'young',         aliases: [],                         pos: 'adjective',    rank: 66 },
+  { id: 'w067', word: 'feliz',     english: 'happy',         aliases: [],                         pos: 'adjective',    rank: 67 },
+  { id: 'w068', word: 'fácil',     english: 'easy',          aliases: [],                         pos: 'adjective',    rank: 68 },
+  { id: 'w069', word: 'difícil',   english: 'difficult',     aliases: ['hard'],                   pos: 'adjective',    rank: 69 },
+  { id: 'w070', word: 'rápido',    english: 'fast',          aliases: ['quick', 'rapid'],         pos: 'adjective',    rank: 70 },
+  { id: 'w071', word: 'muy',       english: 'very',          aliases: [],                         pos: 'adverb',       rank: 71 },
+  { id: 'w072', word: 'más',       english: 'more',          aliases: [],                         pos: 'adverb',       rank: 72 },
+  { id: 'w073', word: 'bien',      english: 'well',          aliases: ['good', 'ok'],             pos: 'adverb',       rank: 73 },
+  { id: 'w074', word: 'también',   english: 'also',          aliases: ['too', 'as well'],         pos: 'adverb',       rank: 74 },
+  { id: 'w075', word: 'ya',        english: 'already',       aliases: ['now'],                    pos: 'adverb',       rank: 75 },
+  { id: 'w076', word: 'así',       english: 'like this',     aliases: ['this way', 'so', 'thus'], pos: 'adverb',       rank: 76 },
+  { id: 'w077', word: 'entonces',  english: 'then',          aliases: ['so', 'therefore'],        pos: 'adverb',       rank: 77 },
+  { id: 'w078', word: 'ahora',     english: 'now',           aliases: [],                         pos: 'adverb',       rank: 78 },
+  { id: 'w079', word: 'después',   english: 'after',         aliases: ['later', 'afterwards'],    pos: 'adverb',       rank: 79 },
+  { id: 'w080', word: 'siempre',   english: 'always',        aliases: [],                         pos: 'adverb',       rank: 80 },
+  { id: 'w081', word: 'nada',      english: 'nothing',       aliases: [],                         pos: 'adverb',       rank: 81 },
+  { id: 'w082', word: 'menos',     english: 'less',          aliases: ['fewer'],                  pos: 'adverb',       rank: 82 },
+  { id: 'w083', word: 'yo',        english: 'I',             aliases: [],                         pos: 'pronoun',      rank: 83 },
+  { id: 'w084', word: 'tú',        english: 'you',           aliases: [],                         pos: 'pronoun',      rank: 84 },
+  { id: 'w085', word: 'él',        english: 'he',            aliases: [],                         pos: 'pronoun',      rank: 85 },
+  { id: 'w086', word: 'ella',      english: 'she',           aliases: [],                         pos: 'pronoun',      rank: 86 },
+  { id: 'w087', word: 'nosotros',  english: 'we',            aliases: [],                         pos: 'pronoun',      rank: 87 },
+  { id: 'w088', word: 'ellos',     english: 'they',          aliases: [],                         pos: 'pronoun',      rank: 88 },
+  { id: 'w089', word: 'de',        english: 'of',            aliases: ['from'],                   pos: 'preposition',  rank: 89 },
+  { id: 'w090', word: 'en',        english: 'in',            aliases: ['on', 'at'],               pos: 'preposition',  rank: 90 },
+  { id: 'w091', word: 'con',       english: 'with',          aliases: [],                         pos: 'preposition',  rank: 91 },
+  { id: 'w092', word: 'para',      english: 'for',           aliases: ['in order to'],            pos: 'preposition',  rank: 92 },
+  { id: 'w093', word: 'por',       english: 'for',           aliases: ['by', 'through', 'because of'], pos: 'preposition', rank: 93 },
+  { id: 'w094', word: 'sin',       english: 'without',       aliases: [],                         pos: 'preposition',  rank: 94 },
+  { id: 'w095', word: 'sobre',     english: 'about',         aliases: ['on', 'over', 'above'],    pos: 'preposition',  rank: 95 },
+  { id: 'w096', word: 'y',         english: 'and',           aliases: [],                         pos: 'conjunction',  rank: 96 },
+  { id: 'w097', word: 'pero',      english: 'but',           aliases: [],                         pos: 'conjunction',  rank: 97 },
+  { id: 'w098', word: 'que',       english: 'that',          aliases: ['which', 'who', 'what'],   pos: 'conjunction',  rank: 98 },
+  { id: 'w099', word: 'porque',    english: 'because',       aliases: [],                         pos: 'conjunction',  rank: 99 },
+  { id: 'w100', word: 'cuando',    english: 'when',          aliases: [],                         pos: 'conjunction',  rank: 100 },
+
+  // ── A2–B1 expansion ────────────────────────────────────────────────────────
+
+  // Verbs
+  { id: 'w101', word: 'empezar',   english: 'to start',      aliases: ['start', 'begin'],          pos: 'verb',         rank: 101 },
+  { id: 'w102', word: 'terminar',  english: 'to finish',     aliases: ['finish', 'end'],           pos: 'verb',         rank: 102 },
+  { id: 'w103', word: 'pensar',    english: 'to think',      aliases: ['think'],                   pos: 'verb',         rank: 103 },
+  { id: 'w104', word: 'conocer',   english: 'to know',       aliases: ['know someone', 'meet'],    pos: 'verb',         rank: 104 },
+  { id: 'w105', word: 'buscar',    english: 'to look for',   aliases: ['look for', 'search'],      pos: 'verb',         rank: 105 },
+  { id: 'w106', word: 'entender',  english: 'to understand', aliases: ['understand'],              pos: 'verb',         rank: 106 },
+  { id: 'w107', word: 'esperar',   english: 'to wait',       aliases: ['wait', 'hope'],            pos: 'verb',         rank: 107 },
+  { id: 'w108', word: 'necesitar', english: 'to need',       aliases: ['need'],                    pos: 'verb',         rank: 108 },
+  { id: 'w109', word: 'cambiar',   english: 'to change',     aliases: ['change'],                  pos: 'verb',         rank: 109 },
+  { id: 'w110', word: 'recordar',  english: 'to remember',   aliases: ['remember'],                pos: 'verb',         rank: 110 },
+  { id: 'w111', word: 'sentir',    english: 'to feel',       aliases: ['feel', 'sense'],           pos: 'verb',         rank: 111 },
+  { id: 'w112', word: 'correr',    english: 'to run',        aliases: ['run'],                     pos: 'verb',         rank: 112 },
+  { id: 'w113', word: 'caminar',   english: 'to walk',       aliases: ['walk'],                    pos: 'verb',         rank: 113 },
+  { id: 'w114', word: 'escuchar',  english: 'to listen',     aliases: ['listen', 'hear'],          pos: 'verb',         rank: 114 },
+  { id: 'w115', word: 'jugar',     english: 'to play',       aliases: ['play'],                    pos: 'verb',         rank: 115 },
+  { id: 'w116', word: 'ayudar',    english: 'to help',       aliases: ['help'],                    pos: 'verb',         rank: 116 },
+  { id: 'w117', word: 'aprender',  english: 'to learn',      aliases: ['learn'],                   pos: 'verb',         rank: 117 },
+  { id: 'w118', word: 'enseñar',   english: 'to teach',      aliases: ['teach', 'show'],           pos: 'verb',         rank: 118 },
+  { id: 'w119', word: 'cocinar',   english: 'to cook',       aliases: ['cook'],                    pos: 'verb',         rank: 119 },
+  { id: 'w120', word: 'salir',     english: 'to go out',     aliases: ['go out', 'leave'],         pos: 'verb',         rank: 120 },
+  { id: 'w121', word: 'volver',    english: 'to return',     aliases: ['return', 'come back'],     pos: 'verb',         rank: 121 },
+  { id: 'w122', word: 'traer',     english: 'to bring',      aliases: ['bring'],                   pos: 'verb',         rank: 122 },
+  { id: 'w123', word: 'perder',    english: 'to lose',       aliases: ['lose'],                    pos: 'verb',         rank: 123 },
+  { id: 'w124', word: 'ganar',     english: 'to win',        aliases: ['win', 'earn'],             pos: 'verb',         rank: 124 },
+  { id: 'w125', word: 'dormir',    english: 'to sleep',      aliases: ['sleep'],                   pos: 'verb',         rank: 125 },
+  { id: 'w126', word: 'despertar', english: 'to wake up',    aliases: ['wake up', 'wake'],         pos: 'verb',         rank: 126 },
+  { id: 'w127', word: 'pagar',     english: 'to pay',        aliases: ['pay'],                     pos: 'verb',         rank: 127 },
+  { id: 'w128', word: 'preguntar', english: 'to ask',        aliases: ['ask'],                     pos: 'verb',         rank: 128 },
+  { id: 'w129', word: 'olvidar',   english: 'to forget',     aliases: ['forget'],                  pos: 'verb',         rank: 129 },
+  { id: 'w130', word: 'intentar',  english: 'to try',        aliases: ['try', 'attempt'],          pos: 'verb',         rank: 130 },
+
+  // Nouns
+  { id: 'w131', word: 'libro',     english: 'book',          aliases: [],                          pos: 'noun',         rank: 131 },
+  { id: 'w132', word: 'dinero',    english: 'money',         aliases: [],                          pos: 'noun',         rank: 132 },
+  { id: 'w133', word: 'música',    english: 'music',         aliases: [],                          pos: 'noun',         rank: 133 },
+  { id: 'w134', word: 'película',  english: 'film',          aliases: ['movie'],                   pos: 'noun',         rank: 134 },
+  { id: 'w135', word: 'calle',     english: 'street',        aliases: ['road'],                    pos: 'noun',         rank: 135 },
+  { id: 'w136', word: 'tienda',    english: 'shop',          aliases: ['store'],                   pos: 'noun',         rank: 136 },
+  { id: 'w137', word: 'escuela',   english: 'school',        aliases: [],                          pos: 'noun',         rank: 137 },
+  { id: 'w138', word: 'mesa',      english: 'table',         aliases: [],                          pos: 'noun',         rank: 138 },
+  { id: 'w139', word: 'silla',     english: 'chair',         aliases: [],                          pos: 'noun',         rank: 139 },
+  { id: 'w140', word: 'cama',      english: 'bed',           aliases: [],                          pos: 'noun',         rank: 140 },
+  { id: 'w141', word: 'ropa',      english: 'clothes',       aliases: ['clothing'],                pos: 'noun',         rank: 141 },
+  { id: 'w142', word: 'comida',    english: 'food',          aliases: ['meal'],                    pos: 'noun',         rank: 142 },
+  { id: 'w143', word: 'coche',     english: 'car',           aliases: [],                          pos: 'noun',         rank: 143 },
+  { id: 'w144', word: 'tren',      english: 'train',         aliases: [],                          pos: 'noun',         rank: 144 },
+  { id: 'w145', word: 'viaje',     english: 'trip',          aliases: ['journey', 'travel'],       pos: 'noun',         rank: 145 },
+  { id: 'w146', word: 'hotel',     english: 'hotel',         aliases: [],                          pos: 'noun',         rank: 146 },
+  { id: 'w147', word: 'restaurante', english: 'restaurant',  aliases: [],                          pos: 'noun',         rank: 147 },
+  { id: 'w148', word: 'desayuno',  english: 'breakfast',     aliases: [],                          pos: 'noun',         rank: 148 },
+  { id: 'w149', word: 'cena',      english: 'dinner',        aliases: ['supper'],                  pos: 'noun',         rank: 149 },
+  { id: 'w150', word: 'número',    english: 'number',        aliases: [],                          pos: 'noun',         rank: 150 },
+  { id: 'w151', word: 'palabra',   english: 'word',          aliases: [],                          pos: 'noun',         rank: 151 },
+  { id: 'w152', word: 'problema',  english: 'problem',       aliases: [],                          pos: 'noun',         rank: 152 },
+  { id: 'w153', word: 'historia',  english: 'story',         aliases: ['history'],                 pos: 'noun',         rank: 153 },
+  { id: 'w154', word: 'clase',     english: 'class',         aliases: ['lesson'],                  pos: 'noun',         rank: 154 },
+  { id: 'w155', word: 'lengua',    english: 'language',      aliases: ['tongue'],                  pos: 'noun',         rank: 155 },
+  { id: 'w156', word: 'pregunta',  english: 'question',      aliases: [],                          pos: 'noun',         rank: 156 },
+  { id: 'w157', word: 'respuesta', english: 'answer',        aliases: [],                          pos: 'noun',         rank: 157 },
+  { id: 'w158', word: 'puerta',    english: 'door',          aliases: [],                          pos: 'noun',         rank: 158 },
+  { id: 'w159', word: 'habitación', english: 'room',         aliases: ['bedroom'],                 pos: 'noun',         rank: 159 },
+  { id: 'w160', word: 'jardín',    english: 'garden',        aliases: [],                          pos: 'noun',         rank: 160 },
+  { id: 'w161', word: 'parque',    english: 'park',          aliases: [],                          pos: 'noun',         rank: 161 },
+  { id: 'w162', word: 'banco',     english: 'bank',          aliases: [],                          pos: 'noun',         rank: 162 },
+  { id: 'w163', word: 'carta',     english: 'letter',        aliases: ['menu', 'card'],            pos: 'noun',         rank: 163 },
+  { id: 'w164', word: 'color',     english: 'color',         aliases: ['colour'],                  pos: 'noun',         rank: 164 },
+  { id: 'w165', word: 'idea',      english: 'idea',          aliases: [],                          pos: 'noun',         rank: 165 },
+  { id: 'w166', word: 'vuelo',     english: 'flight',        aliases: [],                          pos: 'noun',         rank: 166 },
+  { id: 'w167', word: 'aeropuerto', english: 'airport',      aliases: [],                          pos: 'noun',         rank: 167 },
+  { id: 'w168', word: 'médico',    english: 'doctor',        aliases: ['physician'],               pos: 'noun',         rank: 168 },
+  { id: 'w169', word: 'hospital',  english: 'hospital',      aliases: [],                          pos: 'noun',         rank: 169 },
+  { id: 'w170', word: 'mercado',   english: 'market',        aliases: [],                          pos: 'noun',         rank: 170 },
+
+  // Adjectives
+  { id: 'w171', word: 'cansado',   english: 'tired',         aliases: [],                          pos: 'adjective',    rank: 171 },
+  { id: 'w172', word: 'enfermo',   english: 'sick',          aliases: ['ill'],                     pos: 'adjective',    rank: 172 },
+  { id: 'w173', word: 'triste',    english: 'sad',           aliases: [],                          pos: 'adjective',    rank: 173 },
+  { id: 'w174', word: 'interesante', english: 'interesting', aliases: [],                          pos: 'adjective',    rank: 174 },
+  { id: 'w175', word: 'bonito',    english: 'pretty',        aliases: ['beautiful', 'nice'],       pos: 'adjective',    rank: 175 },
+  { id: 'w176', word: 'limpio',    english: 'clean',         aliases: [],                          pos: 'adjective',    rank: 176 },
+  { id: 'w177', word: 'sucio',     english: 'dirty',         aliases: [],                          pos: 'adjective',    rank: 177 },
+  { id: 'w178', word: 'lleno',     english: 'full',          aliases: [],                          pos: 'adjective',    rank: 178 },
+  { id: 'w179', word: 'vacío',     english: 'empty',         aliases: [],                          pos: 'adjective',    rank: 179 },
+  { id: 'w180', word: 'listo',     english: 'ready',         aliases: ['clever', 'smart'],         pos: 'adjective',    rank: 180 },
+  { id: 'w181', word: 'ocupado',   english: 'busy',          aliases: [],                          pos: 'adjective',    rank: 181 },
+  { id: 'w182', word: 'libre',     english: 'free',          aliases: ['available'],               pos: 'adjective',    rank: 182 },
+  { id: 'w183', word: 'importante', english: 'important',   aliases: [],                          pos: 'adjective',    rank: 183 },
+  { id: 'w184', word: 'posible',   english: 'possible',      aliases: [],                          pos: 'adjective',    rank: 184 },
+  { id: 'w185', word: 'lento',     english: 'slow',          aliases: [],                          pos: 'adjective',    rank: 185 },
+  { id: 'w186', word: 'temprano',  english: 'early',         aliases: [],                          pos: 'adjective',    rank: 186 },
+  { id: 'w187', word: 'tarde',     english: 'late',          aliases: [],                          pos: 'adjective',    rank: 187 },
+  { id: 'w188', word: 'caliente',  english: 'hot',           aliases: ['warm'],                    pos: 'adjective',    rank: 188 },
+  { id: 'w189', word: 'frío',      english: 'cold',          aliases: [],                          pos: 'adjective',    rank: 189 },
+  { id: 'w190', word: 'seguro',    english: 'safe',          aliases: ['sure', 'certain'],         pos: 'adjective',    rank: 190 },
+
+  // Adverbs
+  { id: 'w191', word: 'aquí',      english: 'here',          aliases: [],                          pos: 'adverb',       rank: 191 },
+  { id: 'w192', word: 'allí',      english: 'there',         aliases: [],                          pos: 'adverb',       rank: 192 },
+  { id: 'w193', word: 'cerca',     english: 'near',          aliases: ['nearby', 'close'],         pos: 'adverb',       rank: 193 },
+  { id: 'w194', word: 'lejos',     english: 'far',           aliases: ['far away'],                pos: 'adverb',       rank: 194 },
+  { id: 'w195', word: 'pronto',    english: 'soon',          aliases: ['quickly'],                 pos: 'adverb',       rank: 195 },
+  { id: 'w196', word: 'todavía',   english: 'still',         aliases: ['yet'],                     pos: 'adverb',       rank: 196 },
+  { id: 'w197', word: 'nunca',     english: 'never',         aliases: [],                          pos: 'adverb',       rank: 197 },
+  { id: 'w198', word: 'quizás',    english: 'maybe',         aliases: ['perhaps'],                 pos: 'adverb',       rank: 198 },
+  { id: 'w199', word: 'juntos',    english: 'together',      aliases: [],                          pos: 'adverb',       rank: 199 },
+  { id: 'w200', word: 'tampoco',   english: 'neither',       aliases: ['not either'],              pos: 'adverb',       rank: 200 },
+]
+
+// Normal direction: given the foreign word, user types the English meaning.
+export function checkTranslation(word: Word, input: string): boolean {
+  const clean = input.toLowerCase().trim()
+  if (!clean) return false
+  const all = [word.english, ...word.aliases].map(s => s.toLowerCase().trim())
+  return all.some(a => a === clean)
+}
+
+// Reversed direction: given the English word, user types the foreign equivalent.
+// Also accepts the Mandarin characters as an alternative to pinyin.
+export function checkReverseTranslation(word: Word, input: string): boolean {
+  const clean = input.toLowerCase().trim()
+  if (!clean) return false
+  if (clean === word.word.toLowerCase()) return true
+  if (word.characters && clean === word.characters.toLowerCase()) return true
+  return false
+}
+

@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment & secrets
+.env
+*.env
+.env.local
+
+# Data files (local progress — not shared)
+data/knowledge_*.json
+data/vocab_graph.json
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Logs
+*.log
