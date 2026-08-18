@@ -20,6 +20,14 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface VocabGraphMeta {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+  nodeCount: number
+}
+
 export type DisplayLang = 'en' | 'es' | 'zh' | 'id'
 
 export type POS =
@@ -203,26 +211,30 @@ const ALL_SUGGESTIONS = buildSuggestions()
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
-const LOCAL_KEY = 'langlearn_vocab_graph'
+function localKey(id: string) { return `langlearn_vocab_graph_${id}` }
 
-function graphFromLocal(): VocabGraph | null {
+function graphFromLocal(id: string): VocabGraph | null {
   if (typeof window === 'undefined') return null
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) ?? 'null') } catch { return null }
+  try { return JSON.parse(localStorage.getItem(localKey(id)) ?? 'null') } catch { return null }
 }
 
-async function loadGraph(): Promise<VocabGraph> {
+async function loadGraph(id: string): Promise<VocabGraph> {
   try {
-    const res  = await fetch('/api/vocab-graph')
-    const data = await res.json() as VocabGraph
-    if (data.nodes?.length || data.edges?.length) return data
+    const res  = await fetch(`/api/vocab-graphs/${id}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.nodes?.length || data.edges?.length) return { nodes: data.nodes ?? [], edges: data.edges ?? [] }
+    }
   } catch {}
-  return graphFromLocal() ?? { nodes: [], edges: [] }
+  return graphFromLocal(id) ?? { nodes: [], edges: [] }
 }
 
-async function saveGraph(g: VocabGraph) {
-  if (typeof window !== 'undefined') localStorage.setItem(LOCAL_KEY, JSON.stringify(g))
-  fetch('/api/vocab-graph', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(g),
+async function saveGraph(id: string, name: string, g: VocabGraph) {
+  if (typeof window !== 'undefined') localStorage.setItem(localKey(id), JSON.stringify(g))
+  fetch(`/api/vocab-graphs/${id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...g, id, name }),
   }).catch(() => {})
 }
 
@@ -612,9 +624,196 @@ function AddNoteNodeModal({ onAdd, onClose }: {
   )
 }
 
+// ── Graph picker ─────────────────────────────────────────────────────────────
+
+function GraphPicker({ onOpen }: { onOpen: (meta: VocabGraphMeta, graph: VocabGraph) => void }) {
+  const [graphs, setGraphs]       = useState<VocabGraphMeta[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [newName, setNewName]     = useState('')
+  const [creating, setCreating]   = useState(false)
+  const [renaming, setRenaming]   = useState<string | null>(null)
+  const [renameVal, setRenameVal] = useState('')
+  const importRef                  = useRef<HTMLInputElement>(null)
+
+  async function refresh() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/vocab-graphs')
+      setGraphs(await res.json())
+    } catch {}
+    setLoading(false)
+  }
+
+  useEffect(() => { refresh() }, [])
+
+  async function createGraph() {
+    const name = newName.trim() || 'Untitled Graph'
+    const res  = await fetch('/api/vocab-graphs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    const data = await res.json()
+    setNewName(''); setCreating(false)
+    onOpen({ id: data.id, name: data.name, createdAt: data.createdAt, updatedAt: data.updatedAt, nodeCount: 0 },
+            { nodes: [], edges: [] })
+  }
+
+  async function openGraph(meta: VocabGraphMeta) {
+    const res  = await fetch(`/api/vocab-graphs/${meta.id}`)
+    const data = await res.json()
+    onOpen(meta, { nodes: data.nodes ?? [], edges: data.edges ?? [] })
+  }
+
+  async function deleteGraph(id: string) {
+    if (!confirm('Delete this graph? This cannot be undone.')) return
+    await fetch(`/api/vocab-graphs/${id}`, { method: 'DELETE' })
+    refresh()
+  }
+
+  async function renameGraph(id: string) {
+    if (!renameVal.trim()) return
+    await fetch(`/api/vocab-graphs/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: renameVal.trim() }),
+    })
+    setRenaming(null)
+    refresh()
+  }
+
+  function exportGraph(meta: VocabGraphMeta) {
+    fetch(`/api/vocab-graphs/${meta.id}`)
+      .then(r => r.json())
+      .then(data => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const a    = document.createElement('a')
+        a.href     = URL.createObjectURL(blob)
+        a.download = `${meta.name.replace(/\s+/g, '_')}.json`
+        a.click()
+        URL.revokeObjectURL(a.href)
+      })
+  }
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async ev => {
+      try {
+        const data = JSON.parse(ev.target?.result as string)
+        // Strip the original ID so a new one is generated
+        const { id: _id, ...rest } = data
+        const res  = await fetch('/api/vocab-graphs', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rest),
+        })
+        const created = await res.json()
+        onOpen(
+          { id: created.id, name: created.name, createdAt: created.createdAt, updatedAt: created.updatedAt, nodeCount: (created.nodes ?? []).length },
+          { nodes: created.nodes ?? [], edges: created.edges ?? [] },
+        )
+      } catch { alert('Invalid graph JSON file.') }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const fmt = (iso: string) => iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+
+  return (
+    <div className="h-screen bg-gray-950 text-white flex flex-col">
+      {/* Header */}
+      <div className="flex-none px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="text-gray-400 hover:text-white transition">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+          </Link>
+          <h1 className="text-lg font-semibold">Vocabulary Graphs</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { importRef.current?.click() }}
+            className="px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition">
+            ↑ Import JSON
+          </button>
+          <button onClick={() => setCreating(true)}
+            className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition">
+            + New graph
+          </button>
+          <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+        </div>
+      </div>
+
+      {/* New graph form */}
+      {creating && (
+        <div className="flex-none px-6 py-3 border-b border-gray-800 bg-gray-900/50 flex items-center gap-3">
+          <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') createGraph(); if (e.key === 'Escape') setCreating(false) }}
+            placeholder="Graph name…"
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+          <button onClick={createGraph} className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition">Create</button>
+          <button onClick={() => setCreating(false)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-white transition">Cancel</button>
+        </div>
+      )}
+
+      {/* Graph list */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        {loading ? (
+          <p className="text-gray-600 text-sm">Loading…</p>
+        ) : graphs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
+            <div className="text-5xl">🌐</div>
+            <p className="text-gray-500 text-sm">No graphs yet.<br />Create one or import a JSON file to get started.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl">
+            {graphs.map(g => (
+              <div key={g.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col gap-3 hover:border-gray-700 transition group">
+                {renaming === g.id ? (
+                  <input autoFocus value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') renameGraph(g.id); if (e.key === 'Escape') setRenaming(null) }}
+                    onBlur={() => renameGraph(g.id)}
+                    className="bg-gray-800 border border-blue-600 rounded px-2 py-1 text-sm text-white focus:outline-none" />
+                ) : (
+                  <div className="flex items-start justify-between gap-2">
+                    <button onClick={() => openGraph(g)} className="text-left font-semibold text-white hover:text-blue-300 transition text-sm leading-snug flex-1">
+                      {g.name}
+                    </button>
+                    <button onClick={() => { setRenaming(g.id); setRenameVal(g.name) }}
+                      className="opacity-0 group-hover:opacity-100 transition text-gray-600 hover:text-gray-300 text-xs shrink-0 px-1">✎</button>
+                  </div>
+                )}
+                <div className="text-xs text-gray-600 flex gap-3">
+                  <span>{g.nodeCount} node{g.nodeCount !== 1 ? 's' : ''}</span>
+                  <span>Updated {fmt(g.updatedAt)}</span>
+                </div>
+                <div className="flex items-center gap-2 pt-1 border-t border-gray-800">
+                  <button onClick={() => openGraph(g)}
+                    className="flex-1 py-1.5 text-xs rounded-lg bg-blue-900/40 border border-blue-800/50 text-blue-300 hover:bg-blue-800/50 transition">
+                    Open
+                  </button>
+                  <button onClick={() => exportGraph(g)} title="Export JSON"
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-gray-700 text-gray-500 hover:text-white hover:border-gray-500 transition">
+                    ↓
+                  </button>
+                  <button onClick={() => deleteGraph(g.id)} title="Delete"
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-gray-800 text-gray-700 hover:text-red-400 hover:border-red-900 transition">
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function VocabGraphPage() {
+  const [activeGraph, setActiveGraph]   = useState<VocabGraphMeta | null>(null)
   const [graph, setGraph]               = useState<VocabGraph>({ nodes: [], edges: [] })
   const [displayLang, setDisplayLang]   = useState<DisplayLang>('en')
   const [search, setSearch]             = useState('')
@@ -634,6 +833,8 @@ export default function VocabGraphPage() {
   const [renameModal, setRenameModal]   = useState<VocabNode | null>(null)
   const [loadingPOS, setLoadingPOS]     = useState(false)
   const [posStatus, setPosStatus]       = useState<string | null>(null)
+  const [renamingGraph, setRenamingGraph] = useState(false)
+  const [renameGraphVal, setRenameGraphVal] = useState('')
 
   const containerRef          = useRef<HTMLDivElement>(null)
   const fgRef                 = useRef<any>(null)
@@ -652,35 +853,32 @@ export default function VocabGraphPage() {
   useEffect(() => { secondaryLangRef.current   = secondaryLang  }, [secondaryLang])
   useEffect(() => { graphRef.current           = graph          }, [graph])
 
-  // ── Load — assign grid coords to any legacy nodes that lack them
-  useEffect(() => {
-    loadGraph().then(raw => {
-      const taken = new Set<string>()
-      const nodes = raw.nodes.map(n => {
-        // Already has valid grid coords — keep them
-        if (n.gridCol != null && n.gridRow != null) {
-          taken.add(`${n.gridCol},${n.gridRow}`)
-          return n
-        }
-        // Legacy node — find it a free slot
-        const pos = findFreeNearOrigin(
-          raw.nodes.filter(x => taken.has(`${x.gridCol},${x.gridRow}`)) as VocabNode[]
-        )
-        taken.add(`${pos.col},${pos.row}`)
-        return { ...n, gridCol: pos.col, gridRow: pos.row }
-      })
-      setGraph({ ...raw, nodes })
-      setLoaded(true)
+  // ── Load — called when a graph is opened from the picker
+  function openGraph(meta: VocabGraphMeta, raw: VocabGraph) {
+    const taken = new Set<string>()
+    const nodes = raw.nodes.map(n => {
+      if (n.gridCol != null && n.gridRow != null) {
+        taken.add(`${n.gridCol},${n.gridRow}`)
+        return n
+      }
+      const pos = findFreeNearOrigin(
+        raw.nodes.filter(x => taken.has(`${x.gridCol},${x.gridRow}`)) as VocabNode[]
+      )
+      taken.add(`${pos.col},${pos.row}`)
+      return { ...n, gridCol: pos.col, gridRow: pos.row }
     })
-  }, [])
+    setActiveGraph(meta)
+    setGraph({ ...raw, nodes })
+    setLoaded(true)
+  }
 
   // ── Debounced save
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!loaded) return
+    if (!loaded || !activeGraph) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => saveGraph(graphRef.current), 800)
-  }, [graph, loaded])
+    saveTimer.current = setTimeout(() => saveGraph(activeGraph.id, activeGraph.name, graphRef.current), 800)
+  }, [graph, loaded, activeGraph])
 
   // ── Cancel connect / append mode on Escape
   useEffect(() => {
@@ -690,6 +888,29 @@ export default function VocabGraphPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // ── Export current graph as JSON download
+  function exportCurrentGraph() {
+    if (!activeGraph) return
+    const payload = { ...activeGraph, ...graphRef.current }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const a    = document.createElement('a')
+    a.href     = URL.createObjectURL(blob)
+    a.download = `${activeGraph.name.replace(/\s+/g, '_')}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  async function commitGraphRename() {
+    if (!activeGraph || !renameGraphVal.trim()) { setRenamingGraph(false); return }
+    const name = renameGraphVal.trim()
+    await fetch(`/api/vocab-graphs/${activeGraph.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    setActiveGraph(m => m ? { ...m, name } : null)
+    setRenamingGraph(false)
+  }
 
   // ── Helpers
   function labelFor(node: VocabNode): string {
@@ -1362,19 +1583,33 @@ export default function VocabGraphPage() {
     (!search || s.english.toLowerCase().includes(search.toLowerCase()))
   )
 
+  // ── Show graph picker when no graph is open
+  if (!activeGraph) return <GraphPicker onOpen={openGraph} />
+
   return (
     <div className="h-screen bg-gray-950 text-white flex flex-col overflow-hidden">
 
       {/* Header */}
       <div className="flex-none px-5 py-3 border-b border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-gray-400 hover:text-white transition" aria-label="Home">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-            </svg>
-          </Link>
+          <button onClick={() => { setActiveGraph(null); setLoaded(false); setGraph({ nodes: [], edges: [] }) }}
+            className="text-gray-400 hover:text-white transition" title="Back to graphs">
+            ←
+          </button>
           <div>
-            <h1 className="text-base font-semibold">Vocabulary Graph</h1>
+            {renamingGraph ? (
+              <input autoFocus value={renameGraphVal}
+                onChange={e => setRenameGraphVal(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') commitGraphRename(); if (e.key === 'Escape') setRenamingGraph(false) }}
+                onBlur={commitGraphRename}
+                className="bg-gray-800 border border-blue-600 rounded px-2 py-0.5 text-sm text-white focus:outline-none font-semibold" />
+            ) : (
+              <h1 className="text-base font-semibold flex items-center gap-1.5 group">
+                {activeGraph.name}
+                <button onClick={() => { setRenamingGraph(true); setRenameGraphVal(activeGraph.name) }}
+                  className="opacity-0 group-hover:opacity-100 transition text-gray-600 hover:text-gray-300 text-xs">✎</button>
+              </h1>
+            )}
             <p className="text-gray-500 text-xs">Left-click to inspect · right-click node for options · right-click canvas to add · drag to move</p>
           </div>
         </div>
@@ -1398,6 +1633,10 @@ export default function VocabGraphPage() {
             )}
           </div>
           <span className="text-xs text-gray-700">{graph.nodes.length} nodes</span>
+          <button onClick={exportCurrentGraph}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium transition bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500">
+            ↓ Export JSON
+          </button>
         </div>
       </div>
 
