@@ -1,0 +1,220 @@
+ANDROID PLAYLIST PLAYER — BUILD SPEC
+====================================
+
+Audience: an AI coding agent that will build this feature. Read the whole file first.
+Do not modify the web app (../language-learning). All changes are in the Android app.
+
+
+1. GOAL
+-------
+Let a language learner replay songs/podcasts from a playlist on their Android phone, with a
+scrolling, time-synced DOUBLE transcript: each line shown in the native language (Spanish,
+Mandarin, or Indonesian) with its English translation beneath it. It must work fully offline
+once a playlist has been imported.
+
+The transcripts are produced by the companion web app ("Load Text" -> "Export playlist"). This
+app only PLAYS and DISPLAYS them; it never transcribes or translates anything itself.
+
+
+2. WHERE TO BUILD IT
+--------------------
+An Android app already exists at ../language-learning-app/ (React Native / Expo, TypeScript,
+built to APK with EAS Build; see ../language-learning/ANDROID.md). Add this feature to that app
+as new screens (stack navigation from the existing Home screen). Do NOT create a second app
+unless something about the existing project makes that impossible, and if so, say why.
+
+Before writing code: read ../language-learning-app/package.json (Expo SDK version),
+App.tsx (navigation), src/lib/knowledge.ts (how AsyncStorage persistence is done), and match
+existing code style, comment density and naming. Use the audio library that matches the
+installed Expo SDK (expo-audio, or expo-av if the SDK is older). Background playback and
+lock-screen controls are required (section 6); if the Expo audio module cannot do that on
+this SDK, use react-native-track-player via a development build / EAS and note it in the
+README section you add.
+
+
+3. INPUT FORMAT (what the web app exports)
+------------------------------------------
+The user downloads ONE zip from the web app, named playlist-<lang>.zip, <lang> being es, zh
+or id. Contents (flat, no folders) - everything needed to play, no other files required:
+
+  playlist.json       manifest (3.1)
+  001.mp3             audio of song 001
+  001.<lang>.txt      native-language transcript of song 001
+  001.en.txt          English transcript of song 001 (same timestamps)
+  002.mp3
+  002.<lang>.txt
+  002.en.txt
+  ...
+
+3.1 playlist.json - the manifest that ties it all together
+
+  {
+    "version": 1,
+    "language": "es",
+    "translation_language": "en",
+    "exported_at": "2026-10-26T00:02:32.167Z",
+    "songs": [
+      {
+        "id": "001",
+        "title": "Hola Ana",
+        "duration": 4.54,
+        "audio": "001.mp3",
+        "transcripts": { "native": "001.es.txt", "english": "001.en.txt" },
+        "line_count": 1,
+        "english_complete": true
+      }
+    ]
+  }
+
+- "id" is the zero-padded playlist position ("001".."050"). It is the stable key for a song.
+- "language" is the native language code. English is always the target ("translation_language").
+- "duration" is in seconds, or null if unknown. "audio" is the mp3 filename in the zip, or
+  null if no audio was available (treat as "no audio": transcript readable, Play disabled).
+- "line_count" is the number of lines in each transcript; use it as a sanity check.
+- "english_complete" is false when some English lines are blank (translation failed).
+- Only songs that transcribed successfully are listed. Ids can therefore have gaps
+  (001, 002, 004). Never assume contiguous ids.
+- Always read file names from the manifest; do not construct them from the id.
+- Check "version"; refuse a higher major version than you support with a clear message.
+
+3.2 Transcript files (.txt, UTF-8, "\n" line endings, trailing newline)
+
+One line per segment:
+
+  [MM:SS.cc --> MM:SS.cc] text
+
+Real sample, 001.es.txt:
+  [00:00.00 --> 00:04.24] ¡Pola! Me llamo Ana. Vivo en Madrid con mi familia.
+Matching 001.en.txt:
+  [00:00.00 --> 00:04.24] Pola! My name is Ana. I live in Madrid with my family.
+
+Rules the parser must handle:
+- Regex: ^\[(\d+):(\d{2}\.\d{2}) --> (\d+):(\d{2}\.\d{2})\] ?(.*)$
+  Minutes are at least 2 digits but CAN exceed 99 (use \d+). Seconds have exactly 2 decimals.
+  time_seconds = minutes*60 + seconds.
+- The native and English files for a song have the SAME number of lines with IDENTICAL
+  timestamps; line N of one is line N of the other. Pair them by index, but verify the
+  timestamps match; if the counts differ, pair by start time and do not crash.
+- The English text after "] " can be EMPTY (translation failed for that line). Show the
+  native line alone for it; never show "null" or a blank gap.
+- A song's .en.txt could be missing entirely; treat it as native-only.
+- Native lines are never empty. Lines are NOT guaranteed short (Whisper may return a
+  whole paragraph as one segment); wrap text and do not truncate.
+- Segments may have gaps between them (instrumental sections). A line stays "current"
+  from its start until the next line's start.
+- Mandarin (zh) native text is Chinese characters without pinyin. Do not try to generate
+  pinyin in v1.
+- Ignore unknown files in the zip. Reject (with a clear message) a zip with no playlist.json.
+
+3.3 AUDIO
+Audio is bundled in the zip as <id>.mp3 (the web app converts every source format to mp3), so
+import is a single step: pick the zip, the app unpacks it. Copy the mp3s into app storage
+(documentDirectory) so playback does not depend on the original picker URI.
+
+If a song's "audio" is null (very old exports), keep the song listed with its transcript
+readable but disable Play and show "No audio". Do not build an "attach audio" flow in v1.
+
+4. DATA MODEL & STORAGE
+-----------------------
+Persist everything locally; nothing needs a network.
+
+  Playlist { key: string (uuid), name: string, language: 'es'|'zh'|'id', importedAt: number,
+             songs: Song[] }
+  Song     { id: string, title: string, audioUri: string|null, lines: Line[] }
+  Line     { start: number, end: number, native: string, english: string|null }  // seconds
+
+- Store parsed JSON in documentDirectory (one file per playlist), not AsyncStorage (it can be
+  large). Keep a small index (names, counts, last played) in AsyncStorage like the existing
+  knowledge.ts does.
+- Importing a playlist with the same name + language should offer "Replace" or "Keep both".
+- Deleting a playlist deletes its audio copies.
+- Persist per-playlist: last song, last position (resume), shuffle, repeat mode.
+- Persist global settings: display mode, font size, playback speed (section 5.3).
+
+
+5. FEATURES (v1 scope)
+----------------------
+
+5.1 Library screen
+- List of imported playlists: name, language flag, song count, "x/y with audio".
+- Import button (section 3). Long-press / menu: rename, delete.
+- Empty state explains: "Export a playlist from the web app (Load Text -> Export playlist)".
+
+5.2 Playlist screen
+- Songs in id order showing id, title, duration (once known), a "no audio" badge if needed.
+- Tap a song to open the player. "Play all" and "Shuffle" buttons.
+
+5.3 Player screen — THE CORE OF THE APP
+- Controls: play/pause, previous/next song, seek bar with elapsed/total, skip-line back/forward
+  (jump to previous/next transcript line), playback speed (0.5x, 0.75x, 1x, 1.25x, 1.5x;
+  keep pitch constant), repeat (off / song / playlist), shuffle.
+- Scrolling double transcript under the controls:
+    * Every line shows the native text large, with the English text beneath it smaller and
+      dimmer. This pairing is the point of the app.
+    * The current line (by playback position) is highlighted and kept vertically centered
+      with smooth scrolling. Update from the player's position callback (~100-250 ms);
+      find the line with a binary search, not a linear scan per tick.
+    * The user scrolling manually pauses auto-follow; show a "Follow" button to resume it.
+      Auto-follow also resumes when the user taps a line.
+    * Tap a line = seek to its start (and keep playing if already playing).
+- Display mode toggle (persisted): Both | Native only | English only. "English only" is for
+  checking comprehension; "Native only" is for testing yourself. Add a "Peek" behavior in
+  Native-only mode: long-press a line to reveal its English for that line only.
+- Line loop (A-B practice): a "Loop this line" toggle that repeats the current line's
+  [start, end] until switched off, with an optional pause between repeats (0-3 s).
+- Text size control (3-4 steps), persisted. Dark theme consistent with the existing app.
+- Lines with long text must wrap; the layout must survive 200+ character lines.
+
+5.4 Background playback
+- Audio continues with the screen off and when the app is backgrounded.
+- Media notification / lock-screen controls with song title, playlist name, prev/play/next.
+- Pause on headphone unplug and when audio focus is lost (phone call); resume sensibly.
+- Playback position survives the app being killed (resume where the user left off).
+
+5.5 Nice-to-have (do ONLY after everything above works; keep it small)
+- Tap a native word to see a hint, reusing the existing word-list data in src/data where the
+  language has data (currently Indonesian only). If no entry, do nothing — no network calls.
+- Sleep timer (15/30/60 min).
+
+
+6. NON-GOALS (do not build)
+---------------------------
+- No transcription, translation, or speech-to-text on the device.
+- No downloading from YouTube / Spotify / any streaming service; no network access required.
+- No accounts, sync, or cloud storage.
+- No editing of transcripts in v1.
+- No pinyin generation, no iOS-specific work (Expo project may still run on iOS; just don't
+  spend time on it).
+
+
+7. QUALITY BAR / ACCEPTANCE CRITERIA
+------------------------------------
+Provide a small sample so this can be verified without the web app: add
+src/dev/sample-playlist/ containing a playlist.json (per 3.1) plus 2 short songs'
+.es.txt/.en.txt (use the samples in section 3.2, extended to 4-6 lines each, with one empty
+English line and one gap between segments to exercise those paths) and a script that zips
+them into a sample playlist-es.zip. Do not commit copyrighted audio: generate two short
+royalty-free test tones/speech clips (e.g. with ffmpeg) as 001.mp3 and 002.mp3.
+
+The feature is done when ALL of these hold:
+ 1. Importing the sample zip creates a playlist with the right songs, ids and titles.
+ 2. Native and English lines pair up correctly, including an empty English line (shown as
+    native-only) and a song with no .en.txt (native-only throughout).
+ 3. The imported playlist plays; the highlighted line tracks playback within
+    ~250 ms and scrolling stays centered; tapping a line seeks to it.
+ 4. Display modes Both / Native only / English only work and persist; long-press peek works.
+ 5. Line loop repeats the current line until disabled.
+ 6. Audio keeps playing with the screen off; lock-screen controls work; position is restored
+    after force-stopping and reopening the app.
+ 7. Prev/next/shuffle/repeat behave correctly with non-contiguous ids (001, 002, 004).
+ 8. Malformed input never crashes the app: bad timestamps are skipped with a warning, a zip
+    without playlist.json shows an error message, mismatched line counts are handled.
+ 9. The parser (section 3.2) has unit tests covering: >99 minutes, empty English text,
+    CRLF line endings, a line with "-->" inside the text, and mismatched line counts.
+10. TypeScript compiles with no errors, and a preview APK builds with the existing
+    `eas build --platform android --profile preview` flow. Update ANDROID.md (in the web
+    app repo is OK to leave alone; put a short "Playlist player" section in the Android
+    app's own README) describing the import steps.
+
+Report back: what you built, what you could not verify (e.g., on-device background playback
+if no device/emulator was available), and any assumption you made about section 3.3.

@@ -22,3 +22,7 @@ tsconfig.tsbuildinfo
 
 # Logs
 *.log
+
+# Local Whisper virtualenv
+.venv-whisper/
+__pycache__/

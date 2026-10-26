@@ -4,6 +4,14 @@
 // word list first (instant), then falls back to /api/translate (Google Translate proxy).
 // Unknown words can be added to the user's knowledge base at level 1 (Seen).
 // Supports Spanish, Mandarin, and Indonesian. Language is persisted via localStorage.
+//
+// Audio: instead of pasting text, the user can upload an audio file (song, podcast, clip).
+// It is transcribed locally by Whisper (see components/AudioLoader.tsx), reviewed/edited,
+// then shown in a time-synced lyrics view (components/LyricsPlayer.tsx). Each transcript
+// line becomes one sentence in the reader, which can replay that line's audio.
+//
+// Playlist: a YouTube / YouTube Music link or a zip of MP3s is transcribed song by song and
+// exported as a zip of timestamped native + English transcripts (components/PlaylistExporter.tsx).
 
 'use client'
 
@@ -12,6 +20,10 @@ import Link from 'next/link'
 import { Language, LANGUAGE_NAMES, LANGUAGE_FLAGS, getStoredLanguage, setStoredLanguage } from '@/lib/language'
 import { Word } from '@/lib/words'
 import { wordsFor } from '@/lib/language-data'
+import type { Segment } from '@/lib/transcribe-jobs'
+import AudioLoader from '@/components/AudioLoader'
+import LyricsPlayer from '@/components/LyricsPlayer'
+import PlaylistExporter from '@/components/PlaylistExporter'
 
 // ── Text processing ───────────────────────────────────────────────────────────
 
@@ -117,12 +129,15 @@ function scoreLabel(score: number): { label: string; color: string } {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type Phase = 'input' | 'reading'
+type Phase = 'input' | 'lyrics' | 'reading'
+type InputMode = 'text' | 'audio' | 'playlist'
 
 export default function LoadTextPage() {
   const [lang, setLang]           = useState<Language>('es')
   const [rawText, setRawText]     = useState('')
   const [phase, setPhase]         = useState<Phase>('input')
+  const [inputMode, setInputMode] = useState<InputMode>('text')
+  const [audio, setAudio]         = useState<{ url: string; segments: Segment[] } | null>(null)
   const [sentences, setSentences] = useState<string[]>([])
   const [idx, setIdx]             = useState(0)
   const [translation, setTranslation] = useState('')
@@ -133,12 +148,43 @@ export default function LoadTextPage() {
   const [actualLoading, setActualLoading] = useState(false)
   const cacheRef = useRef<Map<string, string>>(new Map())
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const stopAtRef = useRef<number | null>(null)
 
   useEffect(() => { setLang(getStoredLanguage()) }, [])
 
   function changeLang(l: Language) {
     setLang(l)
     setStoredLanguage(l)
+  }
+
+  function clearAudio() {
+    if (audio) URL.revokeObjectURL(audio.url)
+    setAudio(null)
+  }
+
+  function loadNew() {
+    clearAudio()
+    setHint(null)
+    setPhase('input')
+  }
+
+  function onAudioReady(file: File, segments: Segment[]) {
+    clearAudio()
+    setAudio({ url: URL.createObjectURL(file), segments })
+    setSentences(segments.map(s => s.text))
+    setIdx(0)
+    resetSentence()
+    setPhase('lyrics')
+  }
+
+  function playLine() {
+    const a = audioRef.current
+    const seg = audio?.segments[idx]
+    if (!a || !seg) return
+    a.currentTime = seg.start
+    stopAtRef.current = seg.end
+    a.play()
   }
 
   function startReading() {
@@ -161,7 +207,7 @@ export default function LoadTextPage() {
 
   function goNext() {
     const next = idx + 1
-    if (next >= sentences.length) { setPhase('input'); return }
+    if (next >= sentences.length) { audio ? setPhase('lyrics') : setPhase('input'); return }
     setIdx(next)
     resetSentence()
   }
@@ -256,6 +302,26 @@ export default function LoadTextPage() {
             ))}
           </div>
 
+          {/* Input mode */}
+          <div className="flex gap-4 mb-4 text-sm">
+            {([['text', 'Paste text'], ['audio', 'Upload audio'], ['playlist', 'Export playlist']] as [InputMode, string][]).map(([m, label]) => (
+              <button
+                key={m}
+                onClick={() => setInputMode(m)}
+                className={`pb-1 border-b-2 transition ${
+                  inputMode === m ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {inputMode === 'audio' ? (
+            <AudioLoader lang={lang} onReady={onAudioReady} />
+          ) : inputMode === 'playlist' ? (
+            <PlaylistExporter lang={lang} />
+          ) : (<>
           {/* Text input */}
           <textarea
             ref={inputRef}
@@ -278,8 +344,22 @@ export default function LoadTextPage() {
           >
             Start Reading →
           </button>
+          </>)}
         </div>
       </div>
+    )
+  }
+
+  // ── LYRICS SCREEN (audio only) ───────────────────────────────────────────────
+  if (phase === 'lyrics' && audio) {
+    return (
+      <LyricsPlayer
+        lang={lang}
+        audioUrl={audio.url}
+        segments={audio.segments}
+        onPractice={start => { setIdx(start); resetSentence(); setPhase('reading') }}
+        onExit={loadNew}
+      />
     )
   }
 
@@ -291,6 +371,20 @@ export default function LoadTextPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center px-4 py-10">
       <div className="w-full max-w-2xl">
+
+        {audio && (
+          <audio
+            ref={audioRef}
+            src={audio.url}
+            onTimeUpdate={e => {
+              const stop = stopAtRef.current
+              if (stop !== null && e.currentTarget.currentTime >= stop) {
+                e.currentTarget.pause()
+                stopAtRef.current = null
+              }
+            }}
+          />
+        )}
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -305,9 +399,17 @@ export default function LoadTextPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            {audio && (
+              <button
+                onClick={() => { audioRef.current?.pause(); setHint(null); setPhase('lyrics') }}
+                className="text-xs text-gray-600 hover:text-gray-400 transition underline"
+              >
+                Back to lyrics
+              </button>
+            )}
             <span className="text-sm text-gray-500">{idx + 1} / {sentences.length}</span>
             <button
-              onClick={() => { setPhase('input'); setHint(null) }}
+              onClick={loadNew}
               className="text-xs text-gray-600 hover:text-gray-400 transition underline"
             >
               Load new text
@@ -325,9 +427,19 @@ export default function LoadTextPage() {
 
         {/* Sentence display */}
         <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 mb-3">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
-            {LANGUAGE_FLAGS[lang]} {LANGUAGE_NAMES[lang]} — click any word for a hint
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wider">
+              {LANGUAGE_FLAGS[lang]} {LANGUAGE_NAMES[lang]} — click any word for a hint
+            </p>
+            {audio && (
+              <button
+                onClick={playLine}
+                className="text-xs px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition"
+              >
+                ▶ Play line
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap gap-x-2 gap-y-2 leading-relaxed">
             {tokens.map((token, i) => {
               const isPunct = /^[.,!?;:¿¡"'()[\]。，！？：；…—–]+$/.test(token)

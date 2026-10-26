@@ -1,0 +1,5 @@
+# Local Whisper transcription (see scripts/transcribe.py)
+# Setup: python3 -m venv .venv-whisper && .venv-whisper/bin/pip install -r scripts/requirements.txt
+faster-whisper>=1.2
+av<17  # faster-whisper 1.2.x breaks on PyAV 17+ (metadata_errors kwarg)
+yt-dlp  # YouTube / YouTube Music playlist import (scripts/playlist.py)
